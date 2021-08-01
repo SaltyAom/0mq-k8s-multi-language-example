@@ -1,0 +1,3 @@
+name: saltyaom-san-diego
+runtime: nodejs
+description: Experimental 0mq multi-language communication in k8s

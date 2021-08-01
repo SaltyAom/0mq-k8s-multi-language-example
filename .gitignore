@@ -1,5 +1,12 @@
 .DS_Store
-main
+.env
+
+fiber/main
+
 database-engine/node_modules
 database-engine/dist
-.env
+
+infra/node_modules
+infra/index.ts
+
+k8s/deployment.cloud.yaml

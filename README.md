@@ -6,14 +6,16 @@ Example of using 0mq inside K8S environment with multi-language communication.
 (Web Server)  (bridge)  (Database Engine)
 
 ## Prerequisted
-I assume that you already have Docker and k8s basic.
+Assuming you have Docker and k8s basic.
+
 - Docker
 - k8s
 - nginx ingress
 
 ## How to
-1. Build Go web server at root
+1. Build Go web server in `fiber`
 ```bash
+cd fiber
 docker build -t docker -t fiber-prisma-main .
 ```
 
@@ -28,10 +30,10 @@ docker build -t fiber-prisma-db-engine .
 4. Port forward nginx Ingress if you haven't.
    (I'm going to forward to localhost:8080)
 ```bash
-# This is going to return ingress name
+# Find the ingress name
 kubectl get pod | grep ingress-nginx-controller-
 
-# Copy ingress name from above
+# Copy ingress name from above to here
 kubectl port-forward ingress-nginx-controller-[hash]-[hash] 8080:80
 ```
 
@@ -46,5 +48,23 @@ kubectl port-forward ingress-nginx-controller-[hash]-[hash] 8080:80
 ./down.sh
 ```
 
+# Automated Deploy to Google Cloud
+Even with automation, manual setup is still required and is complicated.
+So I think I will implement basic deployment which can be automated.
+
+## Prerequisted
+- [Pulumi](http://pulumi.com)
+
+Manaul:
+1. Push docker image of `fiber` and `database-engine` to any registry.
+
+2. Edit `k8s/index.ts`, add your image registry.
+
+3. Add `DATABASE_URL` env in `k8s/index.ts`.
+
+4. Run:
+```bash
+cd infra && yarn up
+```
 
 <img src="https://user-images.githubusercontent.com/35027979/124180626-a6be0d00-dade-11eb-89aa-e7d5ff39ba69.gif" alt="Enterprise" width=48 />

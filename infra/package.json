@@ -1,0 +1,14 @@
+{
+    "name": "saltyaom-san-diego",
+    "scripts": {
+    	"up": "pulumi up -y"
+    },
+    "devDependencies": {
+        "@types/node": "^10.0.0"
+    },
+    "dependencies": {
+        "@pulumi/gcp": "^5.13.0",
+        "@pulumi/kubernetes": "^3.5.2",
+        "@pulumi/pulumi": "^3.9.1"
+    }
+}

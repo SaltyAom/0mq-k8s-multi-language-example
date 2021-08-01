@@ -1,0 +1,3 @@
+config:
+  gcp:project: macbigduck
+  gcp:zone: asia-southeast1-a

@@ -58,6 +58,8 @@ const handle = async (buffer: Buffer[]) => {
                 data: null
             } as DatabaseResponse)
         ])
+
+        console.log(error)
     }
 }
 
