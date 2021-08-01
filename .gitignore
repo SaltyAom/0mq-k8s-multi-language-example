@@ -3,4 +3,3 @@ main
 database-engine/node_modules
 database-engine/dist
 .env
-Dockerfile
