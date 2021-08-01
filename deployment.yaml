@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: main-app
+  template:
+    metadata:
+      labels:
+        app: main-app
+    spec:
+      containers:
+      - name: main
+        image: fiber-prisma-main
+        imagePullPolicy: Never
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "2m"
+          limits:
+            memory: "1Gi"
+            cpu: "6m"
+        ports:
+        - containerPort: 3000
+      - name: database-engine
+        image: fiber-prisma-db-engine
+        imagePullPolicy: Never
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1m"
+          limits:
+            memory: "4Gi"
+            cpu: "4m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-service
+spec:
+  selector:
+    app: main-app
+  ports:
+  - port: 80
+    targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  labels:
+      name: main-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-service
+            port:
+              number: 80

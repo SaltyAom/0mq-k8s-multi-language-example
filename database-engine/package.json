@@ -1,0 +1,22 @@
+{
+  "name": "database-engine",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "NODE_ENV=production node build/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^2.28.0",
+    "p-queue": "6",
+    "prisma": "2.27.0",
+    "zeromq": "^6.0.0-beta.6"
+  },
+  "devDependencies": {
+    "@types/node": "^16.3.2",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5"
+  }
+}
