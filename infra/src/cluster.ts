@@ -2,10 +2,9 @@ import * as k8s from '@pulumi/kubernetes'
 import * as pulumi from '@pulumi/pulumi'
 import * as gcp from '@pulumi/gcp'
 
-import { clusterName as name } from '../config'
+import { clusterName as name, region } from '../config'
 
-const createCluster = () => {
-	// Create a GKE cluster
+const createCluster = (network: pulumi.Output<string>) => {
 	const engineVersion = gcp.container
 		.getEngineVersions()
 		.then((v) => v.latestMasterVersion)
@@ -14,8 +13,10 @@ const createCluster = () => {
 		initialNodeCount: 3,
 		minMasterVersion: engineVersion,
 		nodeVersion: engineVersion,
-		enableShieldedNodes: true,
 		location: gcp.config.region,
+		enableShieldedNodes: true,
+		networkingMode: 'VPC_NATIVE',
+		network,
 		clusterAutoscaling: {
 			enabled: true,
 			resourceLimits: [
@@ -31,13 +32,27 @@ const createCluster = () => {
 				}
 			]
 		},
+		// Is required for some weird reason
+		ipAllocationPolicy: {
+			clusterIpv4CidrBlock: '',
+			servicesIpv4CidrBlock: ''
+		},
+		addonsConfig: {
+			dnsCacheConfig: {
+				enabled: true
+			},
+			horizontalPodAutoscaling: {
+				disabled: false
+			}
+		},
 		nodeConfig: {
 			machineType: 'n1-highcpu-4',
 			oauthScopes: [
 				'https://www.googleapis.com/auth/compute',
 				'https://www.googleapis.com/auth/devstorage.read_only',
 				'https://www.googleapis.com/auth/logging.write',
-				'https://www.googleapis.com/auth/monitoring'
+				'https://www.googleapis.com/auth/monitoring',
+				'https://www.googleapis.com/auth/cloud-platform'
 			]
 		}
 	})
@@ -78,8 +93,7 @@ users:
         token-key: '{.credential.access_token}'
       name: gcp
 `
-    })
-
+		})
 
 	// Create a Kubernetes provider instance that uses our cluster from above.
 	const clusterProvider = new k8s.Provider(name, {

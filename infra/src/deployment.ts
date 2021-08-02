@@ -1,5 +1,6 @@
 import * as k8s from '@pulumi/kubernetes'
-import * as pulumi from '@pulumi/pulumi'
+
+import type { AppDeployment } from './types'
 
 const createDeployment = (
 	name: string,
@@ -8,14 +9,7 @@ const createDeployment = (
 		namespace,
 		label,
 		spec
-	}: {
-		clusterProvider: k8s.Provider
-		namespace: pulumi.Output<string>
-		label: pulumi.Input<{
-			[key: string]: pulumi.Input<string>
-		}>
-		spec: pulumi.Input<k8s.types.input.apps.v1.DeploymentSpec>
-	}
+	}: AppDeployment
 ) => {
 	const deployment = new k8s.apps.v1.Deployment(
 		name,

@@ -1,13 +1,31 @@
+import * as pulumi from '@pulumi/pulumi'
 import {
 	createCluster,
 	createDeployment,
+	createDatabase,
+	createLabel,
+	createIngress,
 	createService,
-	createLabel
+	createVPC
 } from './src'
 
-const { name: clusterName, provider, namespace } = createCluster()
+import { clusterName as name, database } from './config'
+import { webServer, databaseEngine } from './src/secret'
+
+const { network, selfLink } = createVPC()
+
+const { name: clusterName, provider, namespace } = createCluster(network)
 
 export const ClusterName = clusterName
+
+const { instance } = createDatabase(database.name, {
+	tier: 'db-custom-4-4096',
+	network: selfLink
+})
+
+const { publicIpAddress, privateIpAddress } = instance
+
+export const DatabasePublicIpAddress = publicIpAddress
 
 const [main, mainLabel] = createLabel('saltyaom-san-diego-fiber')
 
@@ -16,7 +34,7 @@ const { name: deploymentName } = createDeployment(main, {
 	namespace,
 	label: mainLabel,
 	spec: {
-		replicas: 3,
+		replicas: 1,
 		selector: {
 			matchLabels: mainLabel
 		},
@@ -28,7 +46,7 @@ const { name: deploymentName } = createDeployment(main, {
 				containers: [
 					{
 						name: 'fiber',
-						image: '<"Fiber" Docker Registry>',
+						image: webServer,
 						ports: [
 							{
 								name: 'http',
@@ -37,32 +55,37 @@ const { name: deploymentName } = createDeployment(main, {
 						],
 						resources: {
 							requests: {
-								memory: '256Mi',
-								cpu: '2m'
+								memory: '512Mi',
+								cpu: '1m'
 							},
 							limits: {
-								memory: '4Gi',
-								cpu: '6m'
+								memory: '3Gi',
+								cpu: '3m'
 							}
 						}
 					},
 					{
 						name: 'database-engine',
-						image: '<Database Engine Docker Registry>',
+						image: databaseEngine,
 						env: [
 							{
 								name: 'DATABASE_URL',
-								value: '<Your Database URL>'
+								value: pulumi
+									.all([privateIpAddress])
+									.apply(
+										([privateIpAddress]) =>
+											`postgresql://${database.username}:${database.password}@${privateIpAddress}/${database.table}?schema=${database.schema}`
+									)
 							}
 						],
 						resources: {
 							requests: {
 								memory: '1Gi',
-								cpu: '1m'
+								cpu: '0.5m'
 							},
 							limits: {
 								memory: '4Gi',
-								cpu: '4m'
+								cpu: '2m'
 							}
 						}
 					}
@@ -82,6 +105,7 @@ const { name: serviceName, publicIp } = createService(mainService, {
 	spec: {
 		type: 'LoadBalancer',
 		selector: mainServiceLabel,
+		internalTrafficPolicy: 'Local',
 		ports: [
 			{
 				port: 80,
@@ -93,3 +117,24 @@ const { name: serviceName, publicIp } = createService(mainService, {
 
 export const ServiceName = serviceName
 export const PublicIp = publicIp
+
+const [ingressName, ingressLabel] = createLabel(`${name}-ingress`)
+createIngress(ingressName, {
+	label: ingressLabel,
+	namespace,
+	clusterProvider: provider,
+	paths: [
+		{
+			path: '/',
+			pathType: 'Prefix',
+			backend: {
+				service: {
+					name: serviceName,
+					port: {
+						number: 80
+					}
+				}
+			}
+		}
+	]
+})

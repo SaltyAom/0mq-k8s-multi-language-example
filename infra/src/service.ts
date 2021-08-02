@@ -1,5 +1,6 @@
 import * as k8s from '@pulumi/kubernetes'
-import * as pulumi from '@pulumi/pulumi'
+
+import type { AppService } from './types'
 
 const createService = (
 	name: string,
@@ -8,21 +9,15 @@ const createService = (
 		namespace,
 		label,
 		spec
-	}: {
-		clusterProvider: k8s.Provider
-		namespace: pulumi.Output<string>
-		label: pulumi.Input<{
-			[key: string]: pulumi.Input<string>
-		}>
-		spec: pulumi.Input<k8s.types.input.core.v1.ServiceSpec>
-	}
+	}: AppService
 ) => {
 	const service = new k8s.core.v1.Service(
 		name,
 		{
 			metadata: {
 				labels: label,
-				namespace
+				namespace,
+				annotations: { 'cloud.google.com/neg': '{"ingress": true}' }
 			},
 			spec
 		},

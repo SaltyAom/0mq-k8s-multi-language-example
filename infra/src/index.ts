@@ -1,4 +1,7 @@
 export { default as createCluster } from './cluster'
 export { default as createDeployment } from './deployment'
-export { default as createService } from './service'
+export { default as createDatabase } from './database'
 export { default as createLabel } from './label'
+export { default as createIngress } from './ingress'
+export { default as createService } from './service'
+export { default as createVPC } from './vpc'

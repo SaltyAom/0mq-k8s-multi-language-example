@@ -7,6 +7,7 @@ database-engine/node_modules
 database-engine/dist
 
 infra/node_modules
-infra/index.ts
+infra/config.ts
+infra/src/secret.ts
 
 k8s/deployment.cloud.yaml
