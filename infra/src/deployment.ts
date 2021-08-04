@@ -28,7 +28,8 @@ const createDeployment = (
 	const deploymentName = deployment.metadata.apply((m) => m.name)
 
 	return {
-		name: deploymentName
+		name: deploymentName,
+		deployment
 	}
 }
 

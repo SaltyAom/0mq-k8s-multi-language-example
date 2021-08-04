@@ -24,7 +24,10 @@ const batch = (index: number) => [
 ]
 
 const main = async () => {
-    await router.bind('tcp://*:5556')
+    await Promise.all([
+        router.bind('tcp://*:5556'),
+        prisma.$connect()
+    ])
 
     console.log('Junbi Ok!')
 

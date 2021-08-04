@@ -4,7 +4,8 @@ const createLabel = (name: string) =>
 	[
 		name,
 		{
-			appClass: clusterName
+			appClass: clusterName,
+			app: name
 		}
 	] as const
 

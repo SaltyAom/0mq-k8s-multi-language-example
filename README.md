@@ -86,7 +86,6 @@ cd infra && yarn up
 ```
 
 ## Note
-You might see `PublicIp` if deployment succeed, that's the `Load Balaner` service not the `Ingress`.
 If you want `Ingress` IP, you can find one in GCP Console.
 
 <img src="https://user-images.githubusercontent.com/35027979/124180626-a6be0d00-dade-11eb-89aa-e7d5ff39ba69.gif" alt="Enterprise" width=48 />

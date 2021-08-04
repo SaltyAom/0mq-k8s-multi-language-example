@@ -10,9 +10,9 @@ import {
 } from './src'
 
 import { clusterName as name, database } from './config'
-import { webServer, databaseEngine } from './src/secret'
+import { fiberImage, databaseEngineImage } from './src/secret'
 
-const { network, selfLink } = createVPC()
+const { network, selfLink, vpc, subNetworking } = createVPC()
 
 const { name: clusterName, provider, namespace } = createCluster(network)
 
@@ -20,33 +20,34 @@ export const ClusterName = clusterName
 
 const { instance } = createDatabase(database.name, {
 	tier: 'db-custom-4-4096',
-	network: selfLink
+	network: selfLink,
+	dependsOn: [vpc, subNetworking]
 })
 
 const { publicIpAddress, privateIpAddress } = instance
 
 export const DatabasePublicIpAddress = publicIpAddress
 
-const [main, mainLabel] = createLabel('saltyaom-san-diego-fiber')
+const [fiber, fiberLabel] = createLabel('saltyaom-san-diego-fiber')
 
-const { name: deploymentName } = createDeployment(main, {
+const { deployment: fiberDeployment } = createDeployment(fiber, {
 	clusterProvider: provider,
 	namespace,
-	label: mainLabel,
+	label: fiberLabel,
 	spec: {
 		replicas: 1,
 		selector: {
-			matchLabels: mainLabel
+			matchLabels: fiberLabel
 		},
 		template: {
 			metadata: {
-				labels: mainLabel
+				labels: fiberLabel
 			},
 			spec: {
 				containers: [
 					{
 						name: 'fiber',
-						image: webServer,
+						image: fiberImage,
 						ports: [
 							{
 								name: 'http',
@@ -55,36 +56,11 @@ const { name: deploymentName } = createDeployment(main, {
 						],
 						resources: {
 							requests: {
-								memory: '512Mi',
+								memory: '1Gi',
 								cpu: '1m'
 							},
 							limits: {
-								memory: '3Gi',
-								cpu: '3m'
-							}
-						}
-					},
-					{
-						name: 'database-engine',
-						image: databaseEngine,
-						env: [
-							{
-								name: 'DATABASE_URL',
-								value: pulumi
-									.all([privateIpAddress])
-									.apply(
-										([privateIpAddress]) =>
-											`postgresql://${database.username}:${database.password}@${privateIpAddress}/${database.table}?schema=${database.schema}`
-									)
-							}
-						],
-						resources: {
-							requests: {
-								memory: '1Gi',
-								cpu: '0.5m'
-							},
-							limits: {
-								memory: '4Gi',
+								memory: '2Gi',
 								cpu: '2m'
 							}
 						}
@@ -95,17 +71,74 @@ const { name: deploymentName } = createDeployment(main, {
 	}
 })
 
-export const DeploymentName = deploymentName
+export const fiberUrn = fiberDeployment.urn
+
+const [databaseEngine, databaseEngineLabel] = createLabel(
+	'saltyaom-san-diego-database-engine'
+)
+
+const { deployment: databaseEngineDeployment } = createDeployment(
+	databaseEngine,
+	{
+		clusterProvider: provider,
+		namespace,
+		label: databaseEngineLabel,
+		spec: {
+			replicas: 1,
+			selector: {
+				matchLabels: databaseEngineLabel
+			},
+			template: {
+				metadata: {
+					labels: databaseEngineLabel
+				},
+				spec: {
+					containers: [
+						{
+							name: 'database-engine',
+							image: databaseEngineImage,
+							env: [
+								{
+									name: 'DATABASE_URL',
+									value: pulumi
+										.all([privateIpAddress])
+										.apply(
+											([privateIpAddress]) =>
+												`postgresql://${database.username}:${database.password}@${privateIpAddress}/${database.table}?schema=${database.schema}`
+										)
+								}
+							],
+							resources: {
+								requests: {
+									memory: '1Gi',
+									cpu: '1m'
+								},
+								limits: {
+									memory: '2Gi',
+									cpu: '2m'
+								}
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+)
+
+export const databaseEngineUrn = databaseEngineDeployment.urn
 
 const [mainService, mainServiceLabel] = createLabel('main-service')
-const { name: serviceName, publicIp } = createService(mainService, {
+const { name: serviceName, service } = createService(mainService, {
 	clusterProvider: provider,
 	namespace,
 	label: mainServiceLabel,
 	spec: {
-		type: 'LoadBalancer',
-		selector: mainServiceLabel,
-		internalTrafficPolicy: 'Local',
+		type: 'NodePort',
+		selector: {
+			appClass: mainServiceLabel.appClass
+		},
+		internalTrafficPolicy: 'Cluster',
 		ports: [
 			{
 				port: 80,
@@ -116,13 +149,13 @@ const { name: serviceName, publicIp } = createService(mainService, {
 })
 
 export const ServiceName = serviceName
-export const PublicIp = publicIp
 
 const [ingressName, ingressLabel] = createLabel(`${name}-ingress`)
 createIngress(ingressName, {
 	label: ingressLabel,
 	namespace,
 	clusterProvider: provider,
+	dependsOn: service,
 	paths: [
 		{
 			path: '/',

@@ -11,7 +11,7 @@ const createVPC = () => {
 		autoCreateSubnetworks: true,
 		description: vpcNetworkDescription,
 		name: vpcNetworkName,
-		routingMode: 'REGIONAL'
+		routingMode: 'GLOBAL'
 	})
 
 	let { name: network, selfLink } = pulumi
@@ -25,6 +25,8 @@ const createVPC = () => {
 		addressType: 'INTERNAL',
 		purpose: 'VPC_PEERING',
 		network: selfLink,
+	}, {
+		dependsOn: vpc
 	})
 
 	const subNetworking = new gcp.servicenetworking.Connection(
@@ -33,10 +35,14 @@ const createVPC = () => {
 			network: vpcNetworkName,
 			reservedPeeringRanges: [vpcIPRange.name],
 			service: 'servicenetworking.googleapis.com'
+		},
+		{
+			dependsOn: vpcIPRange
 		}
 	)
 
     return {
+		vpc,
         network,
         selfLink,
         subNetworking

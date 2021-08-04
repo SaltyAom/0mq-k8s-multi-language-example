@@ -27,13 +27,10 @@ const createService = (
 	)
 
 	const serviceName = service.metadata.apply((m) => m.name)
-	const servicePublicIP = service.status.apply(
-		(s) => s.loadBalancer.ingress[0].ip
-	)
 
 	return {
 		name: serviceName,
-		publicIp: servicePublicIP
+		service
 	}
 }
 

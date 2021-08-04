@@ -21,4 +21,10 @@ export interface AppIngress extends DeploymentReference {
 	paths: pulumi.Input<
 		pulumi.Input<k8s.types.input.networking.v1.HTTPIngressPath>[]
 	>
+	dependsOn: DependsOn
 }
+
+export type DependsOn =
+	| pulumi.Input<pulumi.Resource>
+	| pulumi.Input<pulumi.Input<pulumi.Resource>[]>
+	| undefined

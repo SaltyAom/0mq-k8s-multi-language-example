@@ -5,38 +5,21 @@ import * as gcp from '@pulumi/gcp'
 import { clusterName as name, region } from '../config'
 
 const createCluster = (network: pulumi.Output<string>) => {
-	const engineVersion = gcp.container
-		.getEngineVersions()
-		.then((v) => v.latestMasterVersion)
-
 	const cluster = new gcp.container.Cluster(name, {
-		initialNodeCount: 3,
-		minMasterVersion: engineVersion,
-		nodeVersion: engineVersion,
-		location: gcp.config.region,
-		enableShieldedNodes: true,
-		networkingMode: 'VPC_NATIVE',
-		network,
-		clusterAutoscaling: {
-			enabled: true,
-			resourceLimits: [
-				{
-					resourceType: 'cpu',
-					minimum: 2,
-					maximum: 4
-				},
-				{
-					resourceType: 'memory',
-					minimum: 1.5,
-					maximum: 3.6
-				}
-			]
+		initialNodeCount: 1,
+		releaseChannel: {
+			channel: 'REGULAR'
 		},
+		location: region,
+		networkingMode: 'VPC_NATIVE',
+		enableAutopilot: true,
+		network,
 		// Is required for some weird reason
 		ipAllocationPolicy: {
 			clusterIpv4CidrBlock: '',
 			servicesIpv4CidrBlock: ''
 		},
+		enableL4IlbSubsetting: true,
 		addonsConfig: {
 			dnsCacheConfig: {
 				enabled: true

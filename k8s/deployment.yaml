@@ -41,6 +41,7 @@ kind: Service
 metadata:
   name: main-service
 spec:
+  type: NodePort
   selector:
     app: main-app
   ports:
