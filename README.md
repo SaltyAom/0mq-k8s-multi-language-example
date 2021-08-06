@@ -67,8 +67,10 @@ Including:
 ## Prerequisted
 - [Pulumi](http://pulumi.com)
 
-Manaul:
+### Pre deployment
 1. Push docker image of `fiber` and `database-engine` to any registry.
+- Make sure Google Cloud can access the registry.
+- The easiest way is to host it in Google Cloud Image Registry, so the image is private, GCP can access it.
 
 2. Rename `config.ts` to `.ts` and fill the form.
 - Rename `src/config.example.ts` to `config.ts`.
@@ -80,10 +82,47 @@ pulumi config set gcp:project <Your GCP project ID>
 pulumi config set gcp:zone asia-southeast1-a
 ```
 
-4. Run:
+### Deployment
+Run:
 ```bash
 cd infra && yarn up
 ```
+
+The deployment will take a couple minute before complete.
+Once complete, you will be able to access the deployment.
+
+### Post deployment
+If you access any endpoint the use `database-engine`, you will notice that it will return `success: false` response.
+Because the automation doesn't create Database schema, you have to created one yourself.
+
+1. Go to your SQL deployment on GCP.
+- Go the `GCP console` 
+- Select `SQL` from sidebar 
+- Select `<your deployed database>`
+
+2. Grab the IP address into local `database-engine/.env`.
+```env
+DATABASE_URL="postgresql://<username>:<password>@<Cloud SQL IP Adress>/prismaQueue?schema=queue"
+```
+
+3. Enable Cloud SQL local machine access.
+- Select `Edit` in GCP SQL console page 
+- Scroll down and expand `Connections` 
+- Check `Enable Public IP` if not enabled 
+- Under `Authorized Networks`, click `Add Network`
+- Name your network and add your current `IP Address` ([Check your ip here](https://www.google.com/search?q=my+ip&oq=my+ip))
+
+4. Migrate schema and table from your Prisma defination to Cloud SQL.
+- Go to `database-engine`
+```bash
+cd database-engine
+```
+- Run `npx prisma migrate <stack name>` (This repo's default is `dev`)
+```bash
+npx prisma migrate <stack name>
+```
+
+After following Post Deployment process, the Database Engine should be able to query and everything should be working just fine.
 
 ## Note
 If you want `Ingress` IP, you can find one in GCP Console.
