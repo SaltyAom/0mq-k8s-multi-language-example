@@ -35,7 +35,7 @@ const { deployment: fiberDeployment } = createDeployment(fiber, {
 	namespace,
 	label: fiberLabel,
 	spec: {
-		replicas: 1,
+		replicas: 3,
 		selector: {
 			matchLabels: fiberLabel
 		},
@@ -56,11 +56,36 @@ const { deployment: fiberDeployment } = createDeployment(fiber, {
 						],
 						resources: {
 							requests: {
+								memory: '512Mi',
+								cpu: '1m'
+							},
+							limits: {
+								memory: '1.8Gi',
+								cpu: '2m'
+							}
+						}
+					},
+					{
+						name: 'database-engine',
+						image: databaseEngineImage,
+						env: [
+							{
+								name: 'DATABASE_URL',
+								value: pulumi
+									.all([privateIpAddress])
+									.apply(
+										([privateIpAddress]) =>
+											`postgresql://${database.username}:${database.password}@${privateIpAddress}/${database.table}?schema=${database.schema}`
+									)
+							}
+						],
+						resources: {
+							requests: {
 								memory: '1Gi',
 								cpu: '1m'
 							},
 							limits: {
-								memory: '2Gi',
+								memory: '1.8Gi',
 								cpu: '2m'
 							}
 						}
@@ -73,61 +98,6 @@ const { deployment: fiberDeployment } = createDeployment(fiber, {
 
 export const fiberUrn = fiberDeployment.urn
 
-const [databaseEngine, databaseEngineLabel] = createLabel(
-	'saltyaom-san-diego-database-engine'
-)
-
-const { deployment: databaseEngineDeployment } = createDeployment(
-	databaseEngine,
-	{
-		clusterProvider: provider,
-		namespace,
-		label: databaseEngineLabel,
-		spec: {
-			replicas: 1,
-			selector: {
-				matchLabels: databaseEngineLabel
-			},
-			template: {
-				metadata: {
-					labels: databaseEngineLabel
-				},
-				spec: {
-					containers: [
-						{
-							name: 'database-engine',
-							image: databaseEngineImage,
-							env: [
-								{
-									name: 'DATABASE_URL',
-									value: pulumi
-										.all([privateIpAddress])
-										.apply(
-											([privateIpAddress]) =>
-												`postgresql://${database.username}:${database.password}@${privateIpAddress}/${database.table}?schema=${database.schema}`
-										)
-								}
-							],
-							resources: {
-								requests: {
-									memory: '1Gi',
-									cpu: '1m'
-								},
-								limits: {
-									memory: '2Gi',
-									cpu: '2m'
-								}
-							}
-						}
-					]
-				}
-			}
-		}
-	}
-)
-
-export const databaseEngineUrn = databaseEngineDeployment.urn
-
 const [mainService, mainServiceLabel] = createLabel('main-service')
 const { name: serviceName, service } = createService(mainService, {
 	clusterProvider: provider,
@@ -135,9 +105,7 @@ const { name: serviceName, service } = createService(mainService, {
 	label: mainServiceLabel,
 	spec: {
 		type: 'NodePort',
-		selector: {
-			appClass: mainServiceLabel.appClass
-		},
+		selector: fiberLabel,
 		internalTrafficPolicy: 'Cluster',
 		ports: [
 			{
