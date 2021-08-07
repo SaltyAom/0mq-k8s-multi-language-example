@@ -7,7 +7,14 @@ const client_1 = require("@prisma/client");
 const zeromq_1 = require("zeromq");
 const p_queue_1 = __importDefault(require("p-queue"));
 const prisma = new client_1.PrismaClient();
-const router = new zeromq_1.Router();
+const router = new zeromq_1.Router({
+    linger: 0,
+    receiveTimeout: 0,
+    backlog: 0,
+    context: new zeromq_1.Context({
+        blocky: false
+    })
+});
 const responseQueue = new p_queue_1.default({
     concurrency: 1
 });
@@ -17,13 +24,12 @@ const batch = (index) => [
     batchSize * (index + 1) - 1
 ];
 const main = async () => {
-    await router.bind('tcp://0.0.0.0:5556');
+    await Promise.all([router.bind('tcp://0.0.0.0:5556'), prisma.$connect()]);
     console.log('Junbi Ok!');
     while (true)
         handle(await router.receive());
 };
 const handle = async (buffer) => {
-    console.log('Recieve Something');
     let [id, message] = splitOnce(buffer.toString(), ',');
     try {
         let request = JSON.parse(message);
@@ -37,7 +43,6 @@ const handle = async (buffer) => {
                     data: result
                 })
             ]);
-            console.log('Send something');
         });
     }
     catch (error) {
@@ -49,7 +54,6 @@ const handle = async (buffer) => {
                 data: null
             })
         ]);
-        console.log('Something went wrong');
         console.log(error);
     }
 };
@@ -93,6 +97,8 @@ const reducers = async ({ method, data: request }) => {
                 skip,
                 take
             });
+        case 'PING':
+            return Date.now();
         default:
             return null;
     }

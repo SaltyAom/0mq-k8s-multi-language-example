@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 
-import { Router } from 'zeromq'
+import { Context, Router } from 'zeromq'
 import PQueue from 'p-queue'
 
 import type {
@@ -11,7 +11,16 @@ import type {
 } from './types'
 
 const prisma = new PrismaClient()
-const router = new Router()
+const router = new Router({
+    linger: 0,
+    backlog: 0,
+    sendHighWaterMark: 10000,
+    receiveHighWaterMark: 10000,
+    tcpKeepalive: 0,
+    context: new Context({
+        blocky: false
+    })
+})
 const responseQueue = new PQueue({
     concurrency: 1
 })
@@ -24,10 +33,7 @@ const batch = (index: number) => [
 ]
 
 const main = async () => {
-    await Promise.all([
-        router.bind('tcp://*:5556'),
-        prisma.$connect()
-    ])
+    await Promise.all([router.bind('tcp://0.0.0.0:5556'), prisma.$connect()])
 
     console.log('Junbi Ok!')
 
@@ -114,6 +120,10 @@ const reducers = async ({ method, data: request }: DatabaseRequest) => {
                 skip,
                 take
             })
+
+        case 'PING':
+            return Date.now()
+
         default:
             return null
     }

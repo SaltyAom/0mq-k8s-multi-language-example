@@ -10,4 +10,5 @@ infra/node_modules
 infra/config.ts
 infra/src/secret.ts
 
+k8s/deployment.yaml
 k8s/deployment.cloud.yaml

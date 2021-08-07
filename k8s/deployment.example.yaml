@@ -28,9 +28,9 @@ spec:
       - name: database-engine
         image: fiber-prisma-db-engine
         imagePullPolicy: Never
-        env:
-          - name: DATABASE_URL
-            value: postgresql://saltyaom:482Ysd.rA8DhiZNaXRzgX@b_HCu!8qnY7C-wuFE*9Y8tDZCVr23Go2fW@35.247.173.198/prismaQueue?schema=queue
+        # env:
+        #  - name: DATABASE_URL
+            # value: <Postgres Connection URL>
         resources:
           requests:
             memory: "1Gi"

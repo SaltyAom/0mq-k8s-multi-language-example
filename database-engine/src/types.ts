@@ -16,11 +16,19 @@ export interface BatchDatabaseRequest {
     data: BatchRequest
 }
 
+export interface PingRequest {
+    method: 'PING'
+    data: null
+}
+
 export interface BatchRequest {
     batch: number
 }
 
-export type DatabaseRequest = CRUDDatabaseRequest | BatchDatabaseRequest
+export type DatabaseRequest =
+    | CRUDDatabaseRequest
+    | BatchDatabaseRequest
+    | PingRequest
 
 export interface DatabaseRequestMap {
     CREATE: Promise<Post>

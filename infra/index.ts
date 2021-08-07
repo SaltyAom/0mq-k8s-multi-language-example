@@ -14,9 +14,9 @@ import { fiberImage, databaseEngineImage } from './src/secret'
 
 const { network, selfLink, vpc, subNetworking } = createVPC()
 
-const { name: clusterName, provider, namespace } = createCluster(network)
+const { provider, namespace } = createCluster(network)
 
-export const ClusterName = clusterName
+export const providerUrn = provider.urn
 
 const { instance } = createDatabase(database.name, {
 	tier: 'db-custom-4-4096',

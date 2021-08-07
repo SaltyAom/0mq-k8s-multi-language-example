@@ -21,6 +21,25 @@ func main() {
 		return c.SendString("Running")
 	})
 
+	app.Get("/ping", func(c *fiber.Ctx) error {
+		response := make(chan string)
+
+		bridgeQueue <- bridge.Message{
+			Request: Database.Request{
+				Method: "PING",
+				Data:   nil,
+			},
+			Response: response,
+		}
+
+		message := <-response
+
+		var data Database.Response
+		json.Unmarshal([]byte(message), &data)
+
+		return c.JSON(data)
+	})
+
 	app.Put("/post", func(c *fiber.Ctx) error {
 		var body Database.CreateRequest
 		err := json.Unmarshal(c.Body(), &body)

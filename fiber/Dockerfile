@@ -36,6 +36,7 @@ RUN go get github.com/pebbe/zmq4
 
 RUN CGO_ENABLED=1 \
   GOOS=linux \
+  GOARCH=amd64 \
   go build -tags netgo -a -v ./src/main.go
 
 # * ---------- * ---------- * ---------- * ---------- * #
