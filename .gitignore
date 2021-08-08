@@ -4,7 +4,7 @@
 fiber/main
 
 database-engine/node_modules
-database-engine/dist
+database-engine/build
 
 infra/node_modules
 infra/config.ts
