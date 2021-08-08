@@ -2,10 +2,9 @@ package bridge
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"math"
 	"math/rand"
+	"sync"
 	"time"
 
 	zmq "github.com/pebbe/zmq4"
@@ -16,16 +15,66 @@ type Message struct {
 	Response chan string
 }
 
+type ArcDealer struct {
+	mutex sync.RWMutex
+	value *zmq.Socket
+}
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func send(socket *zmq.Socket, message Message) {
-	content, _ := json.Marshal(message.Request)
-	socket.SendMessage(content)
-	receive, _ := socket.Recv(0)
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
-	message.Response <- receive
+func uid(n int) string {
+	b := make([]rune, n)
+
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+
+	return string(b)
+}
+
+func send(arcSocket *ArcDealer, message Message, socketMap map[string]chan string) {
+	content, _ := json.Marshal(message.Request)
+	id := uid(16)
+
+	arcSocket.mutex.Lock()
+
+	socketMap[id] = message.Response
+	arcSocket.value.SendMessage([][]byte{[]byte(id), content})
+
+	arcSocket.mutex.Unlock()
+}
+
+func receiver(arcSocket *ArcDealer, socketMap map[string]chan string) {
+	arcSocket.mutex.Lock()
+
+	receive, _ := arcSocket.value.RecvMessage(0)
+
+	if len(receive) < 2 {
+		println("R")
+		arcSocket.mutex.RUnlock()
+		return
+	}
+
+	id := string(receive[0])
+	message := string(receive[1])
+
+	println(id, message)
+
+	if channel, ok := socketMap[id]; ok {
+		select {
+		case channel <- message:
+			println("Friend", id, message, socketMap[id])
+		default:
+			println("Abort")
+		}
+	}
+
+	delete(socketMap, id)
+	arcSocket.mutex.Unlock()
 }
 
 func bridge(messages chan Message) {
@@ -36,19 +85,23 @@ func bridge(messages chan Message) {
 		return
 	}
 
-	identity := fmt.Sprintf("%08X", rand.Intn(0x10000))
-	socket.SetIdentity(identity)
-
 	socket.Connect("tcp://0.0.0.0:5556")
-	defer socket.Close()
+
+	socketMap := make(map[string]chan string)
+
+	arcSocket := ArcDealer{
+		mutex: sync.RWMutex{},
+		value: socket,
+	}
 
 	for message := range messages {
-		go send(socket, message)
+		send(&arcSocket, message, socketMap)
+		go receiver(&arcSocket, socketMap)
 	}
 }
 
 func CreateBridge() chan Message {
-	concurrent := int(math.Pow(2, 16))
+	concurrent := int(1)
 	bridgeQueue := make(chan Message, concurrent)
 
 	go bridge(bridgeQueue)

@@ -14,9 +14,8 @@ const prisma = new PrismaClient()
 const router = new Router({
     linger: 0,
     backlog: 0,
-    sendHighWaterMark: 10000,
-    receiveHighWaterMark: 10000,
     tcpKeepalive: 0,
+    sendTimeout: 0,
     context: new Context({
         blocky: false
     })
@@ -35,13 +34,22 @@ const batch = (index: number) => [
 const main = async () => {
     await Promise.all([router.bind('tcp://0.0.0.0:5556'), prisma.$connect()])
 
+    // "Ping" the database to remove cloud start on GKE Autopilot + Testing the connection
+    await Promise.all([prisma.$queryRaw`SELECT 1 AS is_alive`])
+
     console.log('Junbi Ok!')
 
     while (true) handle(await router.receive())
 }
 
-const handle = async (buffer: Buffer[]) => {
-    let [id, message] = splitOnce(buffer.toString(), ',')
+const handle = async ([id, readableId, buffer]: Buffer[]) => {
+    let message = buffer.toString()
+
+    await new Promise<void>((resolve) => {
+        setTimeout(() => {
+            resolve()
+        }, 10)
+    })
 
     try {
         let request: DatabaseRequest = JSON.parse(message)
@@ -51,31 +59,32 @@ const handle = async (buffer: Buffer[]) => {
         responseQueue.add(async () => {
             await router.send([
                 id,
+                readableId.toString(),
                 JSON.stringify({
                     success: true,
                     info: '',
                     data: result
                 } as DatabaseResponse)
             ])
+
+            console.log('Send', readableId.toString())
         })
     } catch (error) {
-        router.send([
-            id,
-            JSON.stringify({
-                success: false,
-                info: 'Something went wrong',
-                data: null
-            } as DatabaseResponse)
-        ])
+        responseQueue.add(async () => {
+            console.log("Q")
+            router.send([
+                id,
+                readableId,
+                JSON.stringify({
+                    success: false,
+                    info: 'Something went wrong',
+                    data: null
+                } as DatabaseResponse)
+            ])
+        })
 
         console.log(error)
     }
-}
-
-const splitOnce = (message: string, splitter: string) => {
-    let index = message.indexOf(splitter)
-
-    return [message.slice(0, index), message.slice(index + 1)]
 }
 
 const reducers = async ({ method, data: request }: DatabaseRequest) => {

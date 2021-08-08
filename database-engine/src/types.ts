@@ -25,6 +25,11 @@ export interface BatchRequest {
     batch: number
 }
 
+export interface ZeroMQRequest<T> {
+    id: string
+    data: T
+}
+
 export type DatabaseRequest =
     | CRUDDatabaseRequest
     | BatchDatabaseRequest
