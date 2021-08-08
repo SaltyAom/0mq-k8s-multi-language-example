@@ -9,8 +9,10 @@ const p_queue_1 = __importDefault(require("p-queue"));
 const prisma = new client_1.PrismaClient();
 const router = new zeromq_1.Router({
     linger: 0,
-    receiveTimeout: 0,
     backlog: 0,
+    sendHighWaterMark: 10000,
+    receiveHighWaterMark: 10000,
+    tcpKeepalive: 0,
     context: new zeromq_1.Context({
         blocky: false
     })
