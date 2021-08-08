@@ -45,12 +45,6 @@ const main = async () => {
 const handle = async ([id, readableId, buffer]: Buffer[]) => {
     let message = buffer.toString()
 
-    await new Promise<void>((resolve) => {
-        setTimeout(() => {
-            resolve()
-        }, 10)
-    })
-
     try {
         let request: DatabaseRequest = JSON.parse(message)
 
@@ -66,12 +60,9 @@ const handle = async ([id, readableId, buffer]: Buffer[]) => {
                     data: result
                 } as DatabaseResponse)
             ])
-
-            console.log('Send', readableId.toString())
         })
     } catch (error) {
         responseQueue.add(async () => {
-            console.log("Q")
             router.send([
                 id,
                 readableId,

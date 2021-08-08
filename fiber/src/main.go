@@ -32,7 +32,7 @@ func main() {
 			Response: response,
 		}
 
-		message := string(<-response)
+		message := <-response
 
 		var data Database.Response
 		json.Unmarshal([]byte(message), &data)

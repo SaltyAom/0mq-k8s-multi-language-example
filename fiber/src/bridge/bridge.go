@@ -40,37 +40,30 @@ func send(arcSocket *ArcDealer, message Message, socketMap map[string]chan strin
 	content, _ := json.Marshal(message.Request)
 	id := uid(16)
 
-	arcSocket.mutex.Lock()
+	arcSocket.mutex.RLock()
 
 	socketMap[id] = message.Response
 	arcSocket.value.SendMessage([][]byte{[]byte(id), content})
 
-	arcSocket.mutex.Unlock()
+	arcSocket.mutex.RUnlock()
 }
 
 func receiver(arcSocket *ArcDealer, socketMap map[string]chan string) {
 	arcSocket.mutex.Lock()
-
 	receive, _ := arcSocket.value.RecvMessage(0)
 
-	if len(receive) < 2 {
-		println("R")
-		arcSocket.mutex.RUnlock()
+	// Ignore empty frame
+	if len(socketMap) < 1 {
+		arcSocket.mutex.Unlock()
+
 		return
 	}
 
-	id := string(receive[0])
-	message := string(receive[1])
-
-	println(id, message)
+	id := receive[0]
+	message := receive[1]
 
 	if channel, ok := socketMap[id]; ok {
-		select {
-		case channel <- message:
-			println("Friend", id, message, socketMap[id])
-		default:
-			println("Abort")
-		}
+		channel <- message
 	}
 
 	delete(socketMap, id)
