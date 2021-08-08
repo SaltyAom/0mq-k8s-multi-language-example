@@ -29,8 +29,8 @@ spec:
         image: fiber-prisma-db-engine
         imagePullPolicy: Never
         # env:
-        #  - name: DATABASE_URL
-            # value: <Postgres Connection URL>
+        # - name: DATABASE_URL
+        #   value: <Postgres Connection URL>
         resources:
           requests:
             memory: "1Gi"

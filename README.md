@@ -24,7 +24,13 @@ cd database-engine
 docker build -t fiber-prisma-db-engine .
 ```
 
-3. Verify if all Docker build pass.
+3. Move `deployment.example.yaml` to `deployment.yaml` and append `DATABASE_URL` environment variable.
+```yaml
+# deployment.yaml
+31 env:
+32  - name: DATABASE_URL
+33    value: <Postgres Connection URL>
+```
 
 4. Port forward nginx Ingress if you haven't.
    (I'm going to forward to localhost:8080)
