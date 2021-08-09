@@ -15,16 +15,16 @@ type Message struct {
 	Response chan string
 }
 
-type ArcDealer struct {
-	mutex sync.RWMutex
-	value *zmq.Socket
-}
-
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_=+-")
+
+type ArcMap struct {
+	mutex *sync.RWMutex
+	value map[string]chan string
+}
 
 func uid(n int) string {
 	b := make([]rune, n)
@@ -36,42 +36,55 @@ func uid(n int) string {
 	return string(b)
 }
 
-func send(arcSocket *ArcDealer, message Message, socketMap map[string]chan string) {
+func send(socket *zmq.Socket, message Message, arcMap ArcMap) {
 	content, _ := json.Marshal(message.Request)
 	id := uid(16)
 
-	arcSocket.mutex.RLock()
+	arcMap.mutex.Lock()
+	arcMap.value[id] = message.Response
+	arcMap.mutex.Unlock()
 
-	socketMap[id] = message.Response
-	arcSocket.value.SendMessage([][]byte{[]byte(id), content})
-
-	arcSocket.mutex.RUnlock()
+	socket.SendMessage([][]byte{[]byte(id), content})
 }
 
-func receiver(arcSocket *ArcDealer, socketMap map[string]chan string) {
-	arcSocket.mutex.Lock()
-	receive, _ := arcSocket.value.RecvMessage(0)
+func receiver(arcMap ArcMap) {
+	socket, err := zmq.NewSocket(zmq.PULL)
 
-	// Ignore empty frame
-	if len(socketMap) < 1 {
-		arcSocket.mutex.Unlock()
-
+	if err != nil {
+		log.Fatal(err)
 		return
 	}
 
-	id := receive[0]
-	message := receive[1]
+	socket.Bind("tcp://0.0.0.0:5557")
 
-	if channel, ok := socketMap[id]; ok {
-		channel <- message
+	for {
+		receive, _ := socket.RecvMessage(0)
+
+		// Ignore empty frame
+		if len(receive) < 2 {
+			return
+		}
+
+		id := string(receive[0])
+		message := string(receive[1])
+
+		go func() {
+			arcMap.mutex.Lock()
+
+			response, ok := arcMap.value[id]
+			delete(arcMap.value, id)
+
+			arcMap.mutex.Unlock()
+
+			if ok {
+				response <- message
+			}
+		}()
 	}
-
-	delete(socketMap, id)
-	arcSocket.mutex.Unlock()
 }
 
 func bridge(messages chan Message) {
-	socket, err := zmq.NewSocket(zmq.DEALER)
+	socket, err := zmq.NewSocket(zmq.PUSH)
 
 	if err != nil {
 		log.Fatal(err)
@@ -80,22 +93,20 @@ func bridge(messages chan Message) {
 
 	socket.Connect("tcp://0.0.0.0:5556")
 
-	socketMap := make(map[string]chan string)
-
-	arcSocket := ArcDealer{
-		mutex: sync.RWMutex{},
-		value: socket,
+	arcMap := ArcMap{
+		mutex: &sync.RWMutex{},
+		value: make(map[string]chan string),
 	}
 
+	go receiver(arcMap)
+
 	for message := range messages {
-		send(&arcSocket, message, socketMap)
-		go receiver(&arcSocket, socketMap)
+		send(socket, message, arcMap)
 	}
 }
 
 func CreateBridge() chan Message {
-	concurrent := int(1)
-	bridgeQueue := make(chan Message, concurrent)
+	bridgeQueue := make(chan Message)
 
 	go bridge(bridgeQueue)
 

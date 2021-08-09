@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 
-import { Context, Router } from 'zeromq'
+import { Context, Pull, Push, Router } from 'zeromq'
 import PQueue from 'p-queue'
 
 import type {
@@ -11,14 +11,17 @@ import type {
 } from './types'
 
 const prisma = new PrismaClient()
-const router = new Router({
+const pull = new Pull({
     linger: 0,
     backlog: 0,
     tcpKeepalive: 0,
-    sendTimeout: 0,
     context: new Context({
         blocky: false
     })
+})
+const push = new Push({
+    linger: 0,
+    backlog: 0
 })
 const responseQueue = new PQueue({
     concurrency: 1
@@ -32,27 +35,29 @@ const batch = (index: number) => [
 ]
 
 const main = async () => {
-    await Promise.all([router.bind('tcp://0.0.0.0:5556'), prisma.$connect()])
+    await Promise.all([
+        pull.bind('tcp://0.0.0.0:5556'),
+        push.connect('tcp://0.0.0.0:5557'),
+        prisma.$connect()
+    ])
 
     // "Ping" the database to remove cloud start on GKE Autopilot + Testing the connection
     await Promise.all([prisma.$queryRaw`SELECT 1 AS is_alive`])
 
     console.log('Junbi Ok!')
 
-    while (true) handle(await router.receive())
+    while (true) handle(await pull.receive())
 }
 
-const handle = async ([id, readableId, buffer]: Buffer[]) => {
+const handle = async ([readableId, buffer]: Buffer[]) => {
     let message = buffer.toString()
 
     try {
         let request: DatabaseRequest = JSON.parse(message)
-
         let result = await reducers(request)
 
         responseQueue.add(async () => {
-            await router.send([
-                id,
+            await push.send([
                 readableId.toString(),
                 JSON.stringify({
                     success: true,
@@ -63,8 +68,7 @@ const handle = async ([id, readableId, buffer]: Buffer[]) => {
         })
     } catch (error) {
         responseQueue.add(async () => {
-            router.send([
-                id,
+            await push.send([
                 readableId,
                 JSON.stringify({
                     success: false,
