@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 
-import { Context, Pull, Push, Router } from 'zeromq'
+import { Context, Pull, Push } from 'zeromq'
 import PQueue from 'p-queue'
 
 import type {
@@ -20,8 +20,7 @@ const pull = new Pull({
     })
 })
 const push = new Push({
-    linger: 0,
-    backlog: 0
+    linger: 0
 })
 const responseQueue = new PQueue({
     concurrency: 1
